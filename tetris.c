@@ -3,6 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <curses.h>
 
 #include "tetris.h"
 
@@ -218,8 +219,46 @@ static int calc_point_and_update_map()
     return point_row_cnt;
 }
 
+static void draw_curr_figure()
+{
+    unsigned char hex_seg;
+    int step, digit;
+
+    for (step = 0; step < 4; step++) {
+        hex_seg = (g_curr_figure.val >> ((3 - step) << 2)) & 0xF;
+        for (digit = 0; digit < 4; digit++) {
+            if (hex_seg & (0x1 << digit)) {
+                mvaddch(g_curr_figure.x + step, g_curr_figure.y + 3 - digit, '+');
+            }
+        }
+    }
+}
+
 static void draw_map()
 {
+    int i, j;
+
+    for (i = 0; i < MAP_X_MAX; i++) {
+        for (j = 0; j < MAP_Y_MAX; j++) {
+            switch (g_map[i][j]) {
+            case MAP_SPACE:
+                mvaddch(i, j, ' ');
+                break;
+            case MAP_POINT:
+                mvaddch(i, j, '+');
+                break;
+            case MAP_WALL:
+                attron(A_REVERSE);
+                mvaddch(i, j, ' ');
+                attroff(A_REVERSE);
+                break;
+            }
+        }
+    }
+
+    draw_curr_figure();
+    refresh();
+
     return;
 }
 
@@ -241,14 +280,31 @@ static void init_map()
 
 static movement_t get_command()
 {
-    char buf[32];
-    int nread;
-    movement_t ret = UNKNOWN;
+    movement_t ret;
+    int ch;
 
-    bzero(buf, sizeof(buf));
-    nread = read(STDIN_FILENO, buf, sizeof(buf));
-    if (nread > 0) {
-        write(STDOUT_FILENO, buf, strlen(buf));
+    ch = getch();
+
+    switch (ch) {
+    case KEY_UP:
+        ret = ROTATE;
+        break;
+    case KEY_DOWN:
+        ret = DOWN;
+        break;
+    case KEY_RIGHT:
+        ret = RIGHT;
+        break;
+    case KEY_LEFT:
+        ret = LEFT;
+        break;
+    case 27:
+        endwin();
+        exit(-1);
+        break;
+    default:
+        ret = UNKNOWN;
+        break;
     }
 
     return ret;
@@ -281,10 +337,9 @@ static void exec_proc(int level)
         tv.tv_sec = usec / 1000000;
         tv.tv_usec = usec % 1000000;
 
-        fprintf(stderr, "select.\n");
         ret = select(maxfd + 1, &read_set, NULL, NULL, &tv);
         if (ret < 0) {
-            printf("Game over.\n");
+            fprintf(stderr, "Select %d \r\n", ret);
             return;
         }
 
@@ -323,7 +378,7 @@ again:
             } else {
                 gen_next_figure(&g_curr_figure, move, &tmp_fig);
                 if (permit_placement(&tmp_fig)) {
-                    memcpy(&g_curr_stage, &tmp_fig, sizeof(figure_t));
+                    memcpy(&g_curr_figure, &tmp_fig, sizeof(figure_t));
                 }
             }
             break;
@@ -340,13 +395,24 @@ again:
 
 game_over:
     draw_map();
-    printf("Game over.\n");
+    fprintf(stderr, "Game over.\r\n");
 }
 
 static void print_usage(const char *cmd)
 {
     printf("Usage: %s <level>\n"
            "  Level [0, 9], and default level is 0\n", cmd);
+}
+
+void init_win()
+{
+    initscr();
+    cbreak();
+    nonl();
+    noecho();
+    intrflush(stdscr,false);
+    keypad(stdscr,true);
+    refresh();
 }
 
 int main(int argc, char *argv[])
@@ -368,15 +434,15 @@ int main(int argc, char *argv[])
 
     srand(time(NULL));
 
-    setbuf(stdin, NULL);
-    setbuf(stdout, NULL);
-
+    init_win();
     init_map();
     gen_new_figure();
     g_curr_stage = STAGE_INIT;
     draw_map();
 
     exec_proc(level);
+
+    endwin();
 
     return 0;
 }
