@@ -36,6 +36,32 @@ static unsigned char empty_row[MAP_Y_MAX] = {MAP_WALL,
                                              MAP_SPACE,
                                              MAP_WALL,};
 
+static unsigned char point_row[MAP_Y_MAX] = {MAP_WALL,
+                                             MAP_POINT,
+                                             MAP_POINT,
+                                             MAP_POINT,
+                                             MAP_POINT,
+                                             MAP_POINT,
+                                             MAP_POINT,
+                                             MAP_POINT,
+                                             MAP_POINT,
+                                             MAP_POINT,
+                                             MAP_POINT,
+                                             MAP_WALL,};
+
+static unsigned char wall_row[MAP_Y_MAX] = {MAP_WALL,
+                                            MAP_WALL,
+                                            MAP_WALL,
+                                            MAP_WALL,
+                                            MAP_WALL,
+                                            MAP_WALL,
+                                            MAP_WALL,
+                                            MAP_WALL,
+                                            MAP_WALL,
+                                            MAP_WALL,
+                                            MAP_WALL,
+                                            MAP_WALL,};
+
 static void gen_new_figure()
 {
     int i, j;
@@ -57,8 +83,8 @@ static void gen_new_figure()
 
     g_new_figure.type = i;
     g_new_figure.val = g_pattern_val[i][j];
-    g_new_figure.x = -1;
-    g_new_figure.y = -1;
+    g_new_figure.x = 1;
+    g_new_figure.y = MAP_Y_MAX + 1;
 }
 
 static unsigned short get_rotate_val(figure_t *fig)
@@ -173,32 +199,53 @@ static void do_placement(figure_t *fig)
     }
 }
 
-static int is_point_row(unsigned char row[])
+static int is_point_row(unsigned char (*row)[MAP_Y_MAX])
 {
-    int col;
-
     if (row == NULL) {
         BUG();
         return 0;
     }
-
-    for (col = 0; col < MAP_Y_MAX; col++) {
-        if (!row[col]) {
-            return 0;
-        }
+    if (memcmp(row, point_row, MAP_Y_MAX) == 0) {
+        return 1;
+    } else {
+        return 0;
     }
+}
 
-    return 1;
+static int is_empty_row(unsigned char (*row)[MAP_Y_MAX])
+{
+    if (row == NULL) {
+        BUG();
+        return 0;
+    }
+    if (memcmp(row, empty_row, MAP_Y_MAX) == 0) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+static int is_wall_row(unsigned char (*row)[MAP_Y_MAX])
+{
+    if (row == NULL) {
+        BUG();
+        return 0;
+    }
+    if (memcmp(row, wall_row, MAP_Y_MAX) == 0) {
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 /* 返回值为获取的分数 */
 static int calc_point_and_update_map()
 {
-    int x_idx, src, dst;
     int point_row_cnt = 0;
+    unsigned char (*row)[MAP_Y_MAX];
 
-    for (x_idx = 1; x_idx < MAP_X_MAX - 1; x_idx++) {
-        if (is_point_row(g_map[x_idx])) {
+    for (row = &g_map[MAP_X_MAX - 2]; !is_empty_row(row) && !is_wall_row(row); row--) {
+        if (is_point_row(row)) {
             point_row_cnt++;
         }
     }
@@ -207,12 +254,15 @@ static int calc_point_and_update_map()
         return 0;
     }
 
-    for (x_idx = MAP_X_MAX - 2; x_idx > 0; x_idx--) {
-        if (is_point_row(g_map[x_idx])) {
-            for (dst = x_idx, src = dst - 1; src > 0; dst--, src--) {
-                memcpy(g_map[dst], g_map[src], MAP_Y_MAX);
+    for (row = &g_map[MAP_X_MAX - 2]; !is_empty_row(row) && !is_wall_row(row); ) {
+        if (is_point_row(row)) {
+            if (!is_wall_row(row - 1)) {
+                memcpy(row, row - 1, MAP_Y_MAX);
+            } else {
+                memcpy(row, empty_row, MAP_Y_MAX);
             }
-            memcpy(g_map[dst], empty_row, MAP_Y_MAX);
+        } else {
+            row--;
         }
     }
 
@@ -224,6 +274,10 @@ static void draw_curr_figure()
     unsigned char hex_seg;
     int step, digit;
 
+    if (g_curr_figure.val == 0) {
+        return;
+    }
+
     for (step = 0; step < 4; step++) {
         hex_seg = (g_curr_figure.val >> ((3 - step) << 2)) & 0xF;
         for (digit = 0; digit < 4; digit++) {
@@ -232,6 +286,37 @@ static void draw_curr_figure()
             }
         }
     }
+}
+
+static void draw_new_figure()
+{
+    unsigned char hex_seg;
+    int step, digit;
+
+    if (g_new_figure.val == 0) {
+        return;
+    }
+
+    for (step = 0; step < 4; step++) {
+        hex_seg = (g_new_figure.val >> ((3 - step) << 2)) & 0xF;
+        for (digit = 0; digit < 4; digit++) {
+            if (hex_seg & (0x1 << digit)) {
+                mvaddch(g_new_figure.x + step, g_new_figure.y + 3 - digit, '+');
+            } else {
+                mvaddch(g_new_figure.x + step, g_new_figure.y + 3 - digit, ' ');
+            }
+        }
+    }
+}
+
+static void draw_point()
+{
+    char buf[32];
+
+    bzero(buf, sizeof(buf));
+    sprintf(buf, "Point:%-4d", g_tetris_point);
+
+    mvaddstr(MAP_X_MAX, MAP_Y_MAX + 1, buf);
 }
 
 static void draw_map()
@@ -257,6 +342,8 @@ static void draw_map()
     }
 
     draw_curr_figure();
+    draw_new_figure();
+    draw_point();
     refresh();
 
     return;
