@@ -282,7 +282,10 @@ static void draw_curr_figure()
         hex_seg = (g_curr_figure.val >> ((3 - step) << 2)) & 0xF;
         for (digit = 0; digit < 4; digit++) {
             if (hex_seg & (0x1 << digit)) {
-                mvaddch(g_curr_figure.x + step, g_curr_figure.y + 3 - digit, '+');
+                attron(A_REVERSE);
+                mvaddch(g_curr_figure.x + step, (g_curr_figure.y + 3 - digit) * 2, ' ');
+                mvaddch(g_curr_figure.x + step, (g_curr_figure.y + 3 - digit) * 2 + 1, ' ');
+                attroff(A_REVERSE);
             }
         }
     }
@@ -301,9 +304,13 @@ static void draw_new_figure()
         hex_seg = (g_new_figure.val >> ((3 - step) << 2)) & 0xF;
         for (digit = 0; digit < 4; digit++) {
             if (hex_seg & (0x1 << digit)) {
-                mvaddch(g_new_figure.x + step, g_new_figure.y + 3 - digit, '+');
+                attron(A_REVERSE);
+                mvaddch(g_new_figure.x + step, (g_new_figure.y + 3 - digit) * 2, ' ');
+                mvaddch(g_new_figure.x + step, (g_new_figure.y + 3 - digit) * 2 + 1, ' ');
+                attroff(A_REVERSE);
             } else {
-                mvaddch(g_new_figure.x + step, g_new_figure.y + 3 - digit, ' ');
+                mvaddch(g_new_figure.x + step, (g_new_figure.y + 3 - digit) * 2, ' ');
+                mvaddch(g_new_figure.x + step, (g_new_figure.y + 3 - digit) * 2 + 1, ' ');
             }
         }
     }
@@ -316,7 +323,7 @@ static void draw_point()
     bzero(buf, sizeof(buf));
     sprintf(buf, "Point:%-4d", g_tetris_point);
 
-    mvaddstr(MAP_X_MAX, MAP_Y_MAX + 1, buf);
+    mvaddstr(MAP_X_MAX + 1, 1, buf);
 }
 
 static void draw_map()
@@ -327,14 +334,19 @@ static void draw_map()
         for (j = 0; j < MAP_Y_MAX; j++) {
             switch (g_map[i][j]) {
             case MAP_SPACE:
-                mvaddch(i, j, ' ');
+                mvaddch(i, 2 * j, ' ');
+                mvaddch(i, 2 * j + 1, ' ');
                 break;
             case MAP_POINT:
-                mvaddch(i, j, '+');
+                attron(A_REVERSE);
+                mvaddch(i, 2 * j, ' ');
+                mvaddch(i, 2 * j + 1, ' ');
+                attroff(A_REVERSE);
                 break;
             case MAP_WALL:
                 attron(A_REVERSE);
-                mvaddch(i, j, ' ');
+                mvaddch(i, 2 * j, ' ');
+                mvaddch(i, 2 * j + 1, ' ');
                 attroff(A_REVERSE);
                 break;
             }
