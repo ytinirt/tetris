@@ -243,6 +243,7 @@ static int calc_point_and_update_map()
 {
     int point_row_cnt = 0;
     unsigned char (*row)[MAP_Y_MAX];
+    unsigned char (*tmp_row)[MAP_Y_MAX];
 
     for (row = &g_map[MAP_X_MAX - 2]; !is_empty_row(row) && !is_wall_row(row); row--) {
         if (is_point_row(row)) {
@@ -256,11 +257,10 @@ static int calc_point_and_update_map()
 
     for (row = &g_map[MAP_X_MAX - 2]; !is_empty_row(row) && !is_wall_row(row); ) {
         if (is_point_row(row)) {
-            if (!is_wall_row(row - 1)) {
-                memcpy(row, row - 1, MAP_Y_MAX);
-            } else {
-                memcpy(row, empty_row, MAP_Y_MAX);
+            for (tmp_row = row; !is_wall_row(tmp_row - 1); tmp_row--) {
+                memcpy(tmp_row, tmp_row - 1, MAP_Y_MAX);
             }
+            memcpy(tmp_row, empty_row, MAP_Y_MAX);
         } else {
             row--;
         }
