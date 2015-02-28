@@ -242,6 +242,7 @@ static int is_wall_row(unsigned char (*row)[MAP_Y_MAX])
 static int calc_point_and_update_map()
 {
     int point_row_cnt = 0;
+    int point;
     unsigned char (*row)[MAP_Y_MAX];
     unsigned char (*tmp_row)[MAP_Y_MAX];
 
@@ -266,7 +267,9 @@ static int calc_point_and_update_map()
         }
     }
 
-    return point_row_cnt;
+    point = (1 << (point_row_cnt - 1)) * 10;
+
+    return point;
 }
 
 static void draw_curr_figure()
