@@ -169,12 +169,12 @@ static int permit_placement(figure_t *fig)
     return 1;
 }
 
-/* 如果figure不能再DOWN，则视当前figure已到生命尽头，否则继续执行move */
-static int permit_movement(figure_t *fig)
+/* 如果figure不能再move，则视当前figure已到生命尽头，否则执行move */
+static int permit_movement(figure_t *fig, movement_t move)
 {
     figure_t tmp_fig;
 
-    gen_next_figure(fig, DOWN, &tmp_fig);
+    gen_next_figure(fig, move, &tmp_fig);
 
     return permit_placement(&tmp_fig);
 }
@@ -469,8 +469,13 @@ again:
             g_curr_stage = STAGE_FALLING;
             break;
         case STAGE_FALLING:
-            if (!permit_movement(&g_curr_figure)) {
-                /* 不能移动时，将图案放置在地图上 */
+move_again:
+            if (!permit_movement(&g_curr_figure, move)) {
+                if (move != DOWN) {
+                    move = DOWN;
+                    goto move_again;
+                }
+                /* 不能向下移动时，将图案放置在地图上，计算分数 */
                 do_placement(&g_curr_figure);
                 g_curr_stage = STAGE_CALC_POINT;
                 goto again;
