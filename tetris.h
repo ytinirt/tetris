@@ -100,6 +100,7 @@ typedef enum movement_e {
     DOWN,
     LEFT,
     RIGHT,
+    PAUSE,
     UNKNOWN,
 } movement_t;
 

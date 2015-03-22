@@ -400,9 +400,13 @@ static movement_t get_command()
     case KEY_LEFT:
         ret = LEFT;
         break;
+    case 'q':
     case 27:
         endwin();
         exit(-1);
+        break;
+    case 'p':
+        ret = PAUSE;
         break;
     default:
         ret = UNKNOWN;
@@ -417,17 +421,19 @@ static void exec_proc(int level)
     fd_set read_set;
     int maxfd;
     long usec;
-    struct timeval tv;
+    struct timeval tv, *p;
     int ret;
     movement_t move;
     figure_t tmp_fig;
+    bool pause;
 
     if (level < 0 || level > 9) {
         BUG();
         return;
     }
+    usec = 100000 * (10 - level);
 
-    usec = 200000 * (10 - level);
+    pause = false;
 
     while (1) {
         draw_map();
@@ -435,11 +441,17 @@ static void exec_proc(int level)
         FD_SET(STDIN_FILENO, &read_set);
         maxfd = STDIN_FILENO;
 
-        bzero(&tv, sizeof(tv));
-        tv.tv_sec = usec / 1000000;
-        tv.tv_usec = usec % 1000000;
+        if (pause) {
+            p = NULL;       /* wait forever until any key typed in */
+            pause = false;
+        } else {
+            bzero(&tv, sizeof(tv));
+            tv.tv_sec = usec / 1000000;
+            tv.tv_usec = usec % 1000000;
+            p = &tv;
+        }
 
-        ret = select(maxfd + 1, &read_set, NULL, NULL, &tv);
+        ret = select(maxfd + 1, &read_set, NULL, NULL, p);
         if (ret < 0) {
             fprintf(stderr, "Select %d \r\n", ret);
             return;
@@ -452,6 +464,10 @@ static void exec_proc(int level)
             if (FD_ISSET(STDIN_FILENO, &read_set)) {
                 move = get_command();
                 if (move == UNKNOWN) {
+                    continue;
+                }
+                if (move == PAUSE) {
+                    pause = true;
                     continue;
                 }
             }
